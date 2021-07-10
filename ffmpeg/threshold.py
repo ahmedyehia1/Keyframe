@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
-def DiffrancesAndThreshold(path):
+def DiffrancesAndThreshold(path,frameCount):
     ''' 
     parameters
         path: string folder path
@@ -10,46 +10,28 @@ def DiffrancesAndThreshold(path):
     return: np.array of keyframes 
     '''
 
-    cap = cv2.VideoCapture(path)
-    frameCount = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))-1
-    frameWidth = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    frameHeight = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    diffHists = np.zeros((frameCount,256,3))
-    ret,current = cap.read()
+    current = cv2.imread(path+"/iframe-1.jpeg")
+    frameHeight,frameWidth = current.shape[0],current.shape[1]
     currentHist = np.array([cv2.calcHist([current],[i],None,[256],[0,256]) for i in [0,1,2]]).reshape(256,3)
     currentHist = currentHist / (frameHeight*frameWidth)
+    diffHists = np.empty((frameCount,256,3))
     diffHists[0] = currentHist
     for i in range(1,frameCount):
-        ret,new = cap.read()
+        new = cv2.imread(path+f"/iframe-{i+1}.jpeg")
         newHist = np.array([cv2.calcHist([new],[i],None,[256],[0,256]) for i in [0,1,2]]).reshape(256,3)
         newHist = newHist / (frameHeight*frameWidth)
         diffHists[i] = np.abs(newHist-currentHist)
         currentHist = newHist
 
     mean = np.mean(diffHists,axis=0)
-    std = np.std(diffHists,axis=0)
+    return diffHists, mean
 
-    cap.release()
-    return diffHists, mean+std
-
-def KeyframeExtract(path):
-    diffHists,threshold = DiffrancesAndThreshold(path)
+def KeyframeExtract(path,frameCount):
+    diffHists,threshold = DiffrancesAndThreshold(path,frameCount)
     threshold = np.sum(threshold)
-    print(threshold)
     keyframes = []
     for i,dif in enumerate(diffHists):
         if np.sum(dif) >= threshold:
-            keyframes.append(i)
+            keyframes.append(i+1)
 
     return np.array(keyframes)
-
-print(KeyframeExtract("../footage1.mp4"))
-
-
-
-
-def get_files(folder_path):
-    only_files = [f for f in listdir(folder_path) if isfile(join(folder_path, f))]
-    for i in range(len(only_files)):
-        only_files[i] = folder_path + only_files[i]
-    return only_files
